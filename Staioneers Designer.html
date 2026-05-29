@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stationeers Designer</title>
+    <style>
+        :root {
+            --bg-color: #0b0b0b;
+            --panel-color: #1a1a1a;
+            --accent-color: #444;
+            --text-color: #e0e0e0;
+            --highlight: #007bff;
+            --header-height: 60px;
+            --sidebar-width: 140px;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            height: var(--header-height);
+            background-color: var(--panel-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            border-bottom: 2px solid var(--accent-color);
+            z-index: 10;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            background: #333;
+            border: 1px solid #555;
+            color: white;
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            background: #444;
+            border-color: #888;
+        }
+
+        .action-btn.danger {
+            background: #622;
+            border-color: #933;
+        }
+
+        .action-btn.danger:hover {
+            background: #822;
+        }
+
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        #sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--panel-color);
+            border-right: 2px solid var(--accent-color);
+            padding: 15px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+        }
+
+        .tool-btn {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: #bbb;
+            padding: 8px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .tool-btn:hover {
+            background: #333;
+            color: #fff;
+        }
+
+        .tool-btn.active {
+            background: var(--highlight);
+            border-color: #00a2ff;
+            color: white;
+        }
+
+        .tool-btn.eraser.active {
+            background: #b30000;
+            border-color: #ff4444;
+        }
+
+        #viewport {
+            flex: 1;
+            position: relative;
+            cursor: crosshair;
+            background: #000;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        /* Custom Modal Styling */
+        #modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .modal-content {
+            background: #222;
+            border: 2px solid var(--highlight);
+            padding: 20px;
+            border-radius: 8px;
+            width: 300px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            font-size: 1rem;
+            color: var(--highlight);
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            background: #111;
+            border: 1px solid #444;
+            color: white;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .controls-hint {
+            margin-top: auto;
+            font-size: 0.65rem;
+            color: #666;
+            line-height: 1.4;
+            padding-top: 15px;
+            border-top: 1px solid #333;
+        }
+
+        h3 {
+            font-size: 0.6rem;
+            color: #555;
+            text-transform: uppercase;
+            margin: 12px 0 4px 0;
+            letter-spacing: 1px;
+        }
+
+        .warning-msg {
+            color: #ffcc00;
+            font-size: 0.7rem;
+            margin-top: 5px;
+            display: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="modal-overlay">
+        <div class="modal-content">
+            <h2>Label Text</h2>
+            <input type="text" id="label-input" placeholder="Type here..." maxlength="30">
+            <div class="modal-actions">
+                <button class="action-btn" onclick="closeModal()">Cancel</button>
+                <button class="action-btn" style="background: var(--highlight);" onclick="confirmText()">Place</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1 style="font-size: 1.2rem; letter-spacing: 2px;">STATIONEERS <span
+                    style="font-weight: 300; color: #888;">DESIGNER</span></h1>
+            <div class="header-actions">
+                <button class="action-btn" onclick="exportImage()">Export Image</button>
+                <button class="action-btn" onclick="exportJSON()">Export JSON</button>
+                <button class="action-btn" onclick="importJSON()">Import JSON</button>
+                <button class="action-btn danger" onclick="clearGrid()">Clear</button>
+            </div>
+        </header>
+        <div class="main-content">
+            <aside id="sidebar">
+                <button class="tool-btn eraser" onclick="setTool('eraser')">Eraser</button>
+                <button class="tool-btn" id="btn-text" onclick="setTool('text')">Text Label</button>
+
+                <h3>Structure</h3>
+                <div id="item-list-structure" style="display:flex; flex-direction:column; gap:4px;"></div>
+
+                <h3>Machinery</h3>
+                <div id="item-list-machinery" style="display:flex; flex-direction:column; gap:4px;"></div>
+
+                <h3>Atmo</h3>
+                <div id="item-list-atmo" style="display:flex; flex-direction:column; gap:4px;"></div>
+
+                <div id="placement-warning" class="warning-msg">⚠ NEEDS FRAME</div>
+                <div class="controls-hint">
+                    <strong>SHORTCUTS</strong><br>
+                    • Scroll: Zoom<br>
+                    • Space: Pan<br>
+                    • R: Rotate<br>
+                    • Right-Click: Cancel
+                </div>
+            </aside>
+            <main id="viewport">
+                <canvas id="gridCanvas"></canvas>
+                <input type="file" id="importInput" style="display:none" accept=".json">
+            </main>
+        </div>
+    </div>
+
+    <script>
+        /** CONFIGURATION **/
+        const CONFIG = {
+            baseCellSize: 50,
+            eraserEdgeThreshold: 10,
+            colors: { bg: '#0b0b0b', grid: '#1a1a1a', origin: '#444' },
+            items: {
+                'frame': { name: 'Frame', color: 'rgba(0, 100, 255, 1)', snap: 'cell', category: 'structure' },
+                'half_frame': { name: 'Half Frame', color: 'rgba(100, 200, 255, 1)', snap: 'cell', category: 'structure' },
+                'wall': { name: 'Wall', color: 'rgba(0, 255, 100, 1)', snap: 'edge', category: 'structure' },
+                'window': { name: 'Window', color: 'rgba(255, 255, 0, 1)', snap: 'edge', category: 'structure' },
+                'door': { name: 'Comp Door', color: 'rgba(255, 50, 50, 1)', snap: 'edge', category: 'structure' },
+                'int_door': { name: 'Int Door', color: 'rgba(180, 80, 255, 1)', snap: 'edge', category: 'structure' },
+                'staircase': { name: 'Staircase', color: 'rgba(180, 180, 180, 1)', snap: 'cell', category: 'structure' },
+
+                'autolathe': { name: 'Workshop', color: 'rgba(150, 150, 150, 1)', snap: 'cell', category: 'machinery', requiresFrame: true },
+                'centrifuge': { name: 'Centrifuge', color: 'rgba(255, 165, 0, 1)', snap: 'cell', category: 'machinery', requiresFrame: true },
+                'silo': { name: 'Silo', color: 'rgba(200, 200, 50, 1)', snap: 'cell', category: 'machinery', requiresFrame: true },
+
+                'tank': { name: 'Tank', color: 'rgba(0, 255, 255, 1)', snap: 'cell', category: 'atmo', requiresFrame: true }
+            }
+        };
+
+        /** APP STATE **/
+        let state = {
+            zoom: 1.0,
+            offset: { x: window.innerWidth * 0.4, y: window.innerHeight * 0.4 },
+            activeTool: null,
+            rotation: 0,
+            placedObjects: JSON.parse(localStorage.getItem('stationeers_layout')) || [],
+            isPanning: false,
+            lastMousePos: { x: 0, y: 0 },
+            mouseWorldPos: { x: 0, y: 0 },
+            hoveredDeleteIdx: -1,
+            pendingTextPos: null
+        };
+
+        const canvas = document.getElementById('gridCanvas');
+        const ctx = canvas.getContext('2d');
+        const viewport = document.getElementById('viewport');
+        const importInput = document.getElementById('importInput');
+        const modal = document.getElementById('modal-overlay');
+        const labelInput = document.getElementById('label-input');
+
+        function init() {
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            for (const [id, data] of Object.entries(CONFIG.items)) {
+                const btn = document.createElement('button');
+                btn.className = 'tool-btn'; btn.innerText = data.name; btn.id = `btn-${id}`;
+                btn.onclick = () => setTool(id);
+                const targetDiv = `item-list-${data.category}`;
+                document.getElementById(targetDiv).appendChild(btn);
+            }
+
+            viewport.addEventListener('wheel', handleWheel, { passive: false });
+            viewport.addEventListener('mousedown', handleMouseDown);
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+            window.addEventListener('keydown', handleKeyDown);
+            viewport.addEventListener('contextmenu', e => e.preventDefault());
+            importInput.addEventListener('change', handleFileImport);
+
+            requestAnimationFrame(render);
+        }
+
+        /** MODAL LOGIC **/
+        function openTextModal(snap) {
+            state.pendingTextPos = snap;
+            modal.style.display = 'flex';
+            labelInput.value = '';
+            labelInput.focus();
+        }
+        function closeModal() { modal.style.display = 'none'; state.pendingTextPos = null; }
+        function confirmText() {
+            const text = labelInput.value.trim();
+            if (text && state.pendingTextPos) {
+                state.placedObjects.push({ type: 'text', text: text, ...state.pendingTextPos });
+                save();
+            }
+            closeModal();
+        }
+
+        function save() { localStorage.setItem('stationeers_layout', JSON.stringify(state.placedObjects)); }
+
+        /** ACTION FUNCTIONS **/
+        function exportImage() {
+            const link = document.createElement('a');
+            link.download = 'stationeers-design.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+        function exportJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.placedObjects));
+            const dl = document.createElement('a');
+            dl.setAttribute("href", dataStr);
+            dl.setAttribute("download", "stationeers-layout.json");
+            dl.click();
+        }
+        function importJSON() { importInput.click(); }
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (Array.isArray(data)) { state.placedObjects = data; save(); }
+                } catch (err) { alert("Invalid file."); }
+            };
+            reader.readAsText(file);
+        }
+        function clearGrid() { if (confirm("Clear design?")) { state.placedObjects = []; save(); } }
+        function resizeCanvas() { canvas.width = viewport.clientWidth; canvas.height = viewport.clientHeight; }
+
+        function setTool(toolId) {
+            state.activeTool = toolId;
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('placement-warning').style.display = 'none';
+            if (toolId === 'eraser') document.querySelector('.eraser').classList.add('active');
+            else if (toolId === 'text') document.getElementById('btn-text').classList.add('active');
+            else if (toolId) document.getElementById(`btn-${toolId}`).classList.add('active');
+        }
+
+        function getSnapPoint(worldX, worldY, type) {
+            if (type === 'cell') {
+                return { x: Math.floor(worldX / CONFIG.baseCellSize), y: Math.floor(worldY / CONFIG.baseCellSize) };
+            } else if (type === 'edge') {
+                const cellX = worldX / CONFIG.baseCellSize, cellY = worldY / CONFIG.baseCellSize;
+                const dx = cellX - Math.floor(cellX), dy = cellY - Math.floor(cellY);
+                if (Math.min(dx, 1 - dx) < Math.min(dy, 1 - dy)) return { x: Math.round(cellX), y: Math.floor(cellY), dir: 'v' };
+                else return { x: Math.floor(cellX), y: Math.round(cellY), dir: 'h' };
+            }
+            return null;
+        }
+
+        function handleKeyDown(e) {
+            if (modal.style.display === 'flex') {
+                if (e.key === 'Enter') confirmText();
+                if (e.key === 'Escape') closeModal();
+                return;
+            }
+            if (e.key.toLowerCase() === 'r') state.rotation = (state.rotation + 90) % 360;
+            if (e.code === 'Space') state.isPanning = true;
+        }
+
+        function handleMouseDown(e) {
+            if (e.button === 1 || (e.button === 0 && state.isPanning)) { state.isPanning = true; return; }
+            if (e.button === 2) { setTool(null); return; }
+            if (state.activeTool && e.button === 0) {
+                const snap = getSnapPoint(state.mouseWorldPos.x, state.mouseWorldPos.y,
+                    (state.activeTool === 'eraser' || state.activeTool === 'text') ? 'cell' : CONFIG.items[state.activeTool].snap);
+
+                if (state.activeTool === 'eraser') {
+                    if (state.hoveredDeleteIdx !== -1) { state.placedObjects.splice(state.hoveredDeleteIdx, 1); save(); }
+                } else if (state.activeTool === 'text') {
+                    openTextModal(snap);
+                } else {
+                    const itemConfig = CONFIG.items[state.activeTool];
+                    if (itemConfig.requiresFrame) {
+                        const hasFoundation = state.placedObjects.some(obj => (obj.type === 'frame' || obj.type === 'half_frame') && obj.x === snap.x && obj.y === snap.y);
+                        if (!hasFoundation) { document.getElementById('placement-warning').style.display = 'block'; return; }
+                    }
+                    document.getElementById('placement-warning').style.display = 'none';
+                    state.placedObjects.push({ type: state.activeTool, ...snap, rot: state.rotation });
+                    save();
+                }
+            }
+        }
+
+        function handleMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+            if (state.isPanning) {
+                state.offset.x += mx - state.lastMousePos.x;
+                state.offset.y += my - state.lastMousePos.y;
+            }
+            state.lastMousePos = { x: mx, y: my };
+            state.mouseWorldPos.x = (mx - state.offset.x) / state.zoom;
+            state.mouseWorldPos.y = (my - state.offset.y) / state.zoom;
+
+            if (state.activeTool === 'eraser') {
+                const cellX = state.mouseWorldPos.x / CONFIG.baseCellSize, cellY = state.mouseWorldPos.y / CONFIG.baseCellSize;
+                const dx = cellX - Math.floor(cellX), dy = cellY - Math.floor(cellY);
+                const minEdgeDist = Math.min(dx, 1 - dx, dy, 1 - dy) * CONFIG.baseCellSize;
+                let idx = -1;
+                if (minEdgeDist < CONFIG.eraserEdgeThreshold) {
+                    const edgeSnap = getSnapPoint(state.mouseWorldPos.x, state.mouseWorldPos.y, 'edge');
+                    idx = state.placedObjects.findIndex(obj => obj.type !== 'text' && !['tank', 'silo', 'centrifuge', 'autolathe'].includes(obj.type) && CONFIG.items[obj.type]?.snap === 'edge' && obj.x === edgeSnap.x && obj.y === edgeSnap.y && obj.dir === edgeSnap.dir);
+                }
+                if (idx === -1) {
+                    const cellSnap = getSnapPoint(state.mouseWorldPos.x, state.mouseWorldPos.y, 'cell');
+                    idx = state.placedObjects.findLastIndex(obj => {
+                        const isCellSnap = obj.type === 'text' || ['tank', 'silo', 'centrifuge', 'autolathe'].includes(obj.type) || CONFIG.items[obj.type]?.snap === 'cell';
+                        if (!isCellSnap) return false;
+                        if (obj.x === cellSnap.x && obj.y === cellSnap.y) return true;
+                        if (obj.type === 'staircase') {
+                            let x2 = obj.x, y2 = obj.y;
+                            const r = ((obj.rot || 0) % 360 + 360) % 360;
+                            if (r === 0) x2 += 1;
+                            else if (r === 90) y2 += 1;
+                            else if (r === 180) x2 -= 1;
+                            else if (r === 270) y2 -= 1;
+                            if (x2 === cellSnap.x && y2 === cellSnap.y) return true;
+                        }
+                        return false;
+                    });
+                }
+                state.hoveredDeleteIdx = idx;
+            } else { state.hoveredDeleteIdx = -1; }
+        }
+
+        function handleMouseUp() { state.isPanning = false; }
+        function handleWheel(e) {
+            e.preventDefault();
+            const scaleAmount = -e.deltaY * 0.0015;
+            const newZoom = Math.min(Math.max(state.zoom + scaleAmount, 0.05), 10);
+            state.offset.x -= (state.mouseWorldPos.x * (newZoom - state.zoom));
+            state.offset.y -= (state.mouseWorldPos.y * (newZoom - state.zoom));
+            state.zoom = newZoom;
+        }
+
+        function render() {
+            ctx.fillStyle = CONFIG.colors.bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(state.offset.x, state.offset.y);
+            ctx.scale(state.zoom, state.zoom);
+
+            const size = CONFIG.baseCellSize;
+            const startX = Math.floor(-state.offset.x / state.zoom / size) * size;
+            const startY = Math.floor(-state.offset.y / state.zoom / size) * size;
+            const endX = startX + (canvas.width / state.zoom) + size * 2;
+            const endY = startY + (canvas.height / state.zoom) + size * 2;
+
+            ctx.strokeStyle = CONFIG.colors.grid; ctx.lineWidth = 1 / state.zoom;
+            for (let x = startX; x <= endX; x += size) { ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, endY); ctx.stroke(); }
+            for (let y = startY; y <= endY; y += size) { ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke(); }
+
+            ctx.strokeStyle = CONFIG.colors.origin; ctx.lineWidth = 2 / state.zoom;
+            ctx.beginPath(); ctx.moveTo(-15, 0); ctx.lineTo(15, 0); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(0, 15); ctx.stroke();
+
+            state.placedObjects.forEach((obj, idx) => drawItem(obj, 1.0, state.hoveredDeleteIdx === idx));
+
+            if (state.activeTool && state.activeTool !== 'eraser' && modal.style.display !== 'flex') {
+                const snap = getSnapPoint(state.mouseWorldPos.x, state.mouseWorldPos.y, state.activeTool === 'text' ? 'cell' : CONFIG.items[state.activeTool].snap);
+                drawItem({ type: state.activeTool, ...snap, rot: state.rotation }, 0.5);
+            }
+            ctx.restore();
+            requestAnimationFrame(render);
+        }
+
+        function drawItem(obj, alpha, highlight = false) {
+            const size = CONFIG.baseCellSize;
+            if (obj.type === 'text') {
+                ctx.fillStyle = highlight ? '#ff4444' : '#fff';
+                ctx.font = `bold ${11 / Math.min(1, state.zoom < 0.5 ? state.zoom * 2 : 1)}px 'Segoe UI'`;
+                ctx.textAlign = 'center'; ctx.fillText(obj.text || "Text", obj.x * size + size / 2, obj.y * size + size / 2 + 4);
+                return;
+            }
+            const data = CONFIG.items[obj.type];
+            ctx.fillStyle = highlight ? `rgba(255, 0, 0, ${alpha})` : (data ? data.color.replace('1)', `${alpha})`) : 'white');
+
+            if (obj.type === 'tank') {
+                ctx.beginPath(); ctx.arc(obj.x * size + size / 2, obj.y * size + size / 2, size * 0.35, 0, Math.PI * 2); ctx.fill();
+            } else if (obj.type === 'silo') {
+                ctx.beginPath(); ctx.arc(obj.x * size + size / 2, obj.y * size + size / 2, size * 0.4, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 2; ctx.stroke();
+            } else if (obj.type === 'centrifuge') {
+                ctx.save(); ctx.translate(obj.x * size + size / 2, obj.y * size + size / 2);
+                ctx.rotate((obj.rot || 0) * Math.PI / 180);
+                ctx.fillRect(-size * 0.35, -size * 0.35, size * 0.7, size * 0.7);
+                ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.arc(0, 0, size * 0.2, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            } else if (obj.type === 'autolathe') {
+                ctx.save(); ctx.translate(obj.x * size + size / 2, obj.y * size + size / 2);
+                ctx.rotate((obj.rot || 0) * Math.PI / 180);
+                ctx.fillRect(-size * 0.45, -size * 0.25, size * 0.9, size * 0.5); // Rectangular machinery
+                ctx.restore();
+            } else if (obj.type === 'staircase') {
+                ctx.save(); ctx.translate(obj.x * size + size / 2, obj.y * size + size / 2);
+                ctx.rotate((obj.rot || 0) * Math.PI / 180);
+                const p = 4;
+                ctx.fillRect(-size / 2 + p, -size / 2 + p, size * 2 - (p * 2), size - (p * 2));
+                ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 2;
+                for(let i = 1; i < 8; i++) {
+                    ctx.beginPath();
+                    let stepX = -size / 2 + p + (size * 2 - (p * 2)) * (i / 8);
+                    ctx.moveTo(stepX, -size / 2 + p);
+                    ctx.lineTo(stepX, size / 2 - p);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            } else if (data && data.snap === 'cell') {
+                const p = obj.type === 'half_frame' ? 12 : 4;
+                ctx.fillRect(obj.x * size + p, obj.y * size + p, size - (p * 2), size - (p * 2));
+            } else if (data) {
+                ctx.save(); ctx.translate(obj.x * size, obj.y * size);
+                const t = (obj.type.includes('door') || obj.type === 'window') ? 10 : 6;
+                if (obj.dir === 'v') ctx.fillRect(-t / 2, 0, t, size);
+                else ctx.fillRect(0, -t / 2, size, t);
+                ctx.restore();
+            }
+        }
+        init();
+    </script>
+</body>
+
+</html>
